@@ -16,7 +16,7 @@ let surface = {
   _offsetY: 0,
   _elements: [],
 
-  create() { 
+  create() {
     let instance = chain(Object.create(this))
       .use(emmiter)
       .use(accessors, ['width', 'height'], true)

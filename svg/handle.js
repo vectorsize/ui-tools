@@ -44,6 +44,10 @@ var handleSVG = Object.assign(handle, {
 
   },
 
+  _hasMode(which){
+    return !!~this._modes.indexOf(which);
+  },
+
   _removeMode(name) {
     let idx = this._modes.indexOf(name);
     this._modes.splice(idx, 1);
@@ -63,7 +67,7 @@ var handleSVG = Object.assign(handle, {
     } else if(!!this.domain()) {
       this._xScale.domain(this.domain());
     } else {
-      this._removeMode('x');
+      //this._removeMode('x');
       this._xScale.range(empty);
     }
 
@@ -72,7 +76,7 @@ var handleSVG = Object.assign(handle, {
     } else if(!!this.domain()) {
       this._yScale.domain(this.domain());
     } else {
-      this._removeMode('y');
+      //this._removeMode('y');
       this._yScale.range(empty);
     }
 
@@ -85,10 +89,11 @@ var handleSVG = Object.assign(handle, {
     if(!e) return;
     let active = this.targetMode() ? this._hit : this._hitTest(e);
     if(active){
+
       // let data = this.data();
       let {x, y} = e;
-      let h = this.height();
-      let w = this.width();
+      let h = this.height() * 0.5;
+      let w = this.width () * 0.5;
       
       // centers mouse interaction
       x -= w;
@@ -110,12 +115,9 @@ var handleSVG = Object.assign(handle, {
       if(sy >= yMax) sy = yMax;
       if(sy <= yMin) sy = yMin;
 
-      // make it a full bar if fillmode
-      if(this.fill()) this._$handle.attr('height', () => this._surface.height() - this._yScale(sy));
 
-
-      this.x(sx);
-      this.y(sy);
+      if(this._hasMode('x')) this.x(sx);
+      if(this._hasMode('y')) this.y(sy);
 
       this.emit('change', `value-${this.id()}`, {x:sx, y:sy});
       // loop.push(() => this.draw());
@@ -126,6 +128,7 @@ var handleSVG = Object.assign(handle, {
 
   draw(changes) {
 
+    // from domain
     let dx = this.x() || 0,
         dy = this.y() || 0;
 
@@ -133,9 +136,17 @@ var handleSVG = Object.assign(handle, {
     let tx = this._xScale(dx),
         ty = this._yScale(dy);
 
-    // fixes drawing offset
-    tx -= this.width( ) * 0.5;
+    // fixes drawing offset ?
     ty -= this.height() * 0.5;
+    tx -= this.width() * 0.5;
+    
+    if(this.fill() && this._hasMode('y')) this._$handle.attr('height', this._surface.height() - ty);
+
+    // make it a full bar if fillmode
+    if(this.fill() && this._hasMode('x')) {
+      this._$handle.attr('width', tx + this.width() * 2); // fill al the space
+      tx -= (this._$handle.attr('width') - this.width()); // stick to the left
+    }
 
     this._$handleView.attr('transform', `translate(${tx}, ${ty})`);
   }
