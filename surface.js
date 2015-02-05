@@ -54,18 +54,22 @@ let surface = {
     let clicked = this._clicked = this._isClicked(e);
     if(clicked) {
       this._updateOffsets();
-      this.emit('mousedown', e);
+      this.emit('mousedown', this._formatEvent(e));
       // loop.push(() => this.emit('mousedown', e));
     }
   },
 
+  _formatEvent(e) {
+    let x = this.x = (e.x - this._offsetX) + this.scrollLeft;
+    let y = this.y = (e.y - this._offsetY) + this.scrollTop;
+    let target = this.target = e.target;
+    this.which = e.which;
+    return {x ,y, target, originalEvent:e};
+  },
+
   _mouseMove(e) {
     if(this._clicked) {
-      let x = this.x = (e.x - this._offsetX) + this.scrollLeft;
-      let y = this.y = (e.y - this._offsetY) + this.scrollTop;
-      let target = this.target = e.target;
-      this.which = e.which;
-      this.emit('mousemove', {x ,y, target, originalEvent:e});
+      this.emit('mousemove', this._formatEvent(e));
       // loop.push(() => this.emit('mousemove', {x ,y, target: e.target, originalEvent:e}));
     }
   },

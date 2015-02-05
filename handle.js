@@ -65,6 +65,7 @@ var handle = {
 
   _mouseDown(e) {
     this._hit = this._hitTest(e);
+    this.update(e);
   },
 
   _mouseUp(e) { 
@@ -81,19 +82,22 @@ var handle = {
 
   _hitTest(e) {
     let hit = false;
+    let srf = this._surface;
+    
     if(!e) return hit;
 
     if(this.targetMode()) {
       hit = this._isClicked(e);
     } else {
-        let srf = this._surface;
       if(!!~this._modes.indexOf('y')) {
-        let left = this.left() - this.pad();
-        let right = this.left() + this.width() + this.pad();
+        let left  = this.left() - this.pad(),
+            right = this.left() + this.width() + this.pad();
+        
         hit = srf.x >= left && srf.x <= right && srf.which === 1;
       } else {
-        let top = this.top() - this.pad();
-        let bottom = this.top() + this.height() + this.pad();
+        let top    = this.top() - this.pad(),
+            bottom = this.top() + this.height() + this.pad();
+        
         hit = srf.y >= top && srf.y <= bottom && srf.which === 1;
       }
 
