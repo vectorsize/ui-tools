@@ -4,6 +4,10 @@
   "description": "interactive UI utilities",
   "main": "index.js",
   "scripts": {
+    "bundle" : "coffee -c ./src/*.js",
+    "uglify": "uglifyjs meyda.js meyda.js > meyda.min.js",
+    "build" : "npm run bundle && npm run uglify",
+    "watch": "nodemon -w ./src -x npm run bundle",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Victor Saiz",
