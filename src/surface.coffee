@@ -62,9 +62,8 @@ surface =
     {x ,y, target, originalEvent:e}
 
   _mouseMove:(e) ->
-    if(@._clicked)
-      @.emit('mousemove', @._formatEvent(e))
-      # loop.push(() -> @.emit('mousemove', {x ,y, target: e.target, originalEvent:e}))
+    @.emit('mousedrag', @._formatEvent(e))
+    # loop.push(() -> @.emit('mousemove', {x ,y, target: e.target, originalEvent:e}))
 
   _mouseUp:(e) ->
     @._clicked = false
@@ -104,25 +103,6 @@ surface =
     @._target = el
 
     @
-
-  draw:(el) ->
-    el.id(el.id() || uid()+1)
-    el._load(@)
-    @._elements.push(el)
-    @
-
-  update:(changes) ->
-    @._elements.forEach((e) -> e.draw(changes, true))
-    return
-
-  delete:(el) ->
-    els = @._elements
-    idx = @._elements.indexOf(el)
-    if(!!~idx)
-      el._listeners(@, 'remove')
-      g = el._$g[0][0]
-      g.parentNode.removeChild(g)
-      els.splice(idx, 1)
 
 
 module.exports = surface

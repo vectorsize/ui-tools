@@ -71,9 +71,7 @@ surface = {
     };
   },
   _mouseMove: function(e) {
-    if (this._clicked) {
-      return this.emit('mousemove', this._formatEvent(e));
-    }
+    return this.emit('mousedrag', this._formatEvent(e));
   },
   _mouseUp: function(e) {
     this._clicked = false;
@@ -115,28 +113,6 @@ surface = {
     this._el = el;
     this._target = el;
     return this;
-  },
-  draw: function(el) {
-    el.id(el.id() || uid() + 1);
-    el._load(this);
-    this._elements.push(el);
-    return this;
-  },
-  update: function(changes) {
-    this._elements.forEach(function(e) {
-      return e.draw(changes, true);
-    });
-  },
-  "delete": function(el) {
-    var els, g, idx;
-    els = this._elements;
-    idx = this._elements.indexOf(el);
-    if (!!~idx) {
-      el._listeners(this, 'remove');
-      g = el._$g[0][0];
-      g.parentNode.removeChild(g);
-      return els.splice(idx, 1);
-    }
   }
 };
 
