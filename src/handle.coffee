@@ -1,110 +1,162 @@
 
+$ = require('sizzle')
 {bind, chain, accessors, emmiter} = require('tools/object')
+{scale} = require('tools/d3-scales')
+slugify = require('slugify')
+# scale = require('tools/scales')
 
-handle =
+# only talks data except for the scales
+# handles margins
+class Handle
+
+  _x:  0
+  _y:  0
+  id:  null
+  $el: null
+  el:  null
+  context: null
+  canvas:  null
+  handle:  null # needed?
+  xscale:  null
+  yscale:  null
+  width:   0
+  height:  0
   
-  _$g: null
-  _target: null
-  _xScale: []
-  _yScale: []
-  _$handle: null
-  _$canvas: null
-  _areaWidth: 0
-  _areaHeight: 0
-  _offsetX: 0
-  _offsetY: 0
-  _hit: false
+  constructor: () ->
+    return new Handle unless @ instanceof Handle
 
-  create: () ->
+    accessorList = ['xdomain', 'ydomain', 'xrange', 'yrange', 'top', 'right', 'bottom', 'left', 'clamps']
 
-    accessorList = [
-      'id', 'data', 'bind',
-      'domain', 'xDomain', 'yDomain',
-      'clamp', 'xClamp', 'yClamp',
-      'x', 'y', 'width', 'height',
-      'top', 'left',
-      'targetMode',
-      'modes',
-      'select',
-      'color',
-      'pad',
-      'fill',
-      'step'
-    ]
-
-    instance = chain(Object.create(@))
+    chain(@)
       # middleware
       .use(emmiter)
       .use(accessors, accessorList)
-      .and(bind, ['_mouseDown', '_mouseUp', 'update'])
-      # initialize
-      .targetMode(true)
-      .left(0)
-      .top(0)
-      .color("steelblue")
-
-    instance._modes = ['x','y']
-
-    instance
-
-
-  _load: (surface) ->
-
-    @._surface = surface
-    @._el = surface._el
-    @._areaWidth = surface.width()
-    @._areaHeight = surface.height()
-
-    @._surface.on('mousedown', @._mouseDown)
-    @._surface.on('mouseup', @._mouseUp)
-    @._surface.on('mousemove', @.update)
-
-    @.load()
-
-
-  _mouseDown: (e) ->
-    @._hit = @._hitTest(e)
-    @.update(e)
-
-
-  _mouseUp: (e) ->
-    @._hit = false
-
-
-  _isClicked: (e) ->
-    return false if(!e)
-    node = e.target || e
-    return true if(node == @._g || node == @._target)
-    return @._isClicked(node.parentNode)
-
-
-  _hitTest: (e) ->
-    hit = false
-    srf = @._surface
+      # .and(bind, ['_mouseDown', '_mouseUp', 'update'])
+      # .targetMode(true)
     
-    return hit if(!e)
+    # margins
+    @top    0
+    @right  0
+    @bottom 0
+    @left   0
+    @clamps true
 
-    if @.targetMode()
-      hit = @._isClicked(e)
-    else
+    @offsetx = 0
+    @offsety = 0
 
-      if !!~@._modes.indexOf('y')
-        left  = @.left() - @.pad()
-        right = @.left() + @.width() + @.pad()
-        
-        hit = srf.x >= left && srf.x <= right && srf.which == 1
-      else
-        top    = @.top() - @.pad()
-        bottom = @.top() + @.height() + @.pad()
-        
-        hit = srf.y >= top && srf.y <= bottom && srf.which == 1
+    # initialise scales
+    @xscale = scale.linear()
+    @yscale = scale.linear()
+
+    # set default scales values
+    defScales = [0, 1]
+    @xdomain  defScales, defScales
+    @xrange   defScales, defScales
+    @ydomain  defScales, defScales
+    @yrange   defScales, defScales
+    @domain   defScales, defScales
+    @range    defScales, defScales
+
+    @updateScales()
 
 
-    @._hit = hit
+  updateScales: () ->
+    @xscale.domain(@xdomain()).range(@xrange())
+    @yscale.domain(@ydomain()).range(@yrange())
+    return
 
 
-  #  to be overriden
-  update: () -> {}
-  load: () -> {}
+  flip: (which) ->
+    range = "#{which}range"
+    @[range]([@[range]()[1], @[range]()[0]])
+    console.log @[range]()
 
-module.exports = handle
+
+  # combined domain setter/getter
+  domain: (xval = null, yval = null) ->
+    if(xval == null) then return [@xdomain(), @ydomain()]
+    @xdomain xval
+    y = if(yval == null) then xval else yval
+    @ydomain y
+    @updateScales()
+    @
+
+
+  # combined range setter/getter
+  range: (xval = null, yval = null) ->
+    if(xval == null) then return [@xrange(), @yrange()]
+    @xrange xval
+    y = if(yval == null) then xval else yval
+    @yrange y
+    @updateScales()
+    @
+
+
+  clamp: (value, extent) ->
+    min = extent[0]
+    max = extent[1]
+    if(value <= min or value >= max)
+      return Math.min(Math.max(value, Math.min(min, max)), Math.max(min, max))
+    value
+
+
+  # sets value to transform translate x in data
+  x: (v=null) ->
+    if v == null then return @_x
+    # x = @xscale v
+    @_x = if @clamps() then @clamp(v, @xdomain()) else v
+    @
+
+
+  # sets value to transform translate y in data
+  y: (v=null) ->
+    if v == null then return @_y
+    # y = @yscale v
+    @_y = if @clamps() then @clamp(v, @ydomain()) else v
+    @
+
+
+  # selector for the container
+  select: (sel) ->
+    @$el = $(sel)
+    @el  = @$el[0]
+    @id  = slugify sel
+    @
+
+
+  # receives an element to be drawn
+  append: () ->
+    @margin  = {top:@top(), right:@right(), bottom:@bottom(), left:@left()}
+    @offsetx = @margin.left + @margin.right
+    @offsety = @margin.top  + @margin.bottom
+    # canvas  should have offsets added
+    # context should be offseted by left + top
+    # reference size gets updated based on the margins
+    @width   = @_xdomain[1] - @offsetx
+    @height  = @_ydomain[1] - @offsety
+    # scales are set accordingly
+    @_xdomain[0] = @margin.left
+    @_ydomain[0] = @margin.top
+    @_xdomain[1] = @width 
+    @_ydomain[1] = @height
+    @updateScales()
+
+
+  # scales binding
+  xToData:  (v) -> @xscale v
+  xToPixel: (v) -> @xscale.invert v
+  
+  yToData:  (v) -> @yscale v
+  yToPixel: (v) -> @yscale.invert v
+
+  # shortcut to transforms
+  # transform: () ->
+
+  # sets rotation to transform rotate
+  rotate: () ->
+
+  # method to apply the state
+  # basically tranform translate x y etc
+  update: () ->
+
+module.exports = Handle

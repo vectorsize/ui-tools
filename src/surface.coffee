@@ -1,108 +1,119 @@
 
-# _ = require('lodash')
+#  = require('lodash')
 {bind, chain, accessors, emmiter} = require('tools/object')
 {uniqueId:uid, UILoop} = require('utils')
 
 int = (string) -> parseInt(string, 10) || 0
 # loop = new UILoop(40)
 
-surface =
+# only talks pixels
+class Surface
 
-  _el: null
-  _target: null
-  _clicked: false
-  _offsetX: 0
-  _offsetY: 0
-  _elements: []
+  el: null
+  target: null
+  clicked: false
+  offsetX: 0
+  offsetY: 0
+  elements: []
 
-  create: () ->
-    instance = chain(Object.create(@))
+  constructor: () ->
+    return new Surface() unless @ instanceof Surface
+
+    chain(@)
       .use(emmiter)
       .use(accessors, ['width', 'height'], true)
-      .and(bind, ['_mouseDown', '_mouseUp', '_mouseMove'])
+      .and(bind, ['mouseDown', 'mouseUp', 'mouseMove'])
 
-    instance._clicked = false
-    instance._elements = []
-    instance.scrollLeft = 0
-    instance.scrollTop = 0
+    @clicked = false
+    @elements = []
+    @scrollLeft = 0
+    @scrollTop = 0
     # loop.start()
-    instance
+
   
    # returns wether the click comes from our element
-  _isClicked: (e) ->
+  isClicked: (e) ->
     if(!e) then return false
     node = e.target || e
-    if(node == @._el) then return true
-    @._isClicked(node.parentNode)
+    if(node == @el) then return true
+    @isClicked(node.parentNode)
 
-  _listeners:(target, action = 'add') ->
-    target["#{action}EventListener"]('mouseleave', @._mouseUp)
-    target["#{action}EventListener"]('mouseup', @._mouseUp)
-    target["#{action}EventListener"]('mousemove', @._mouseMove)
 
-  _updateOffsets:() ->
-    @.scrollTop = window.pageYOffset - document.documentElement.clientTop
-    @.scrollLeft = window.pageXOffset - document.documentElement.clientLeft
+  listeners:(target, action = 'add') ->
+    target["#{action}EventListener"]('mouseleave', @mouseUp)
+    target["#{action}EventListener"]('mouseup', @mouseUp)
+    target["#{action}EventListener"]('mousemove', @mouseMove)
 
-  _mouseDown:(e) ->
-    @._listeners(document.body, 'add')
-    clicked = @._clicked = @._isClicked(e)
+
+  updateOffsets:() ->
+    @scrollTop = window.pageYOffset - document.documentElement.clientTop
+    @scrollLeft = window.pageXOffset - document.documentElement.clientLeft
+
+
+  mouseDown:(e) ->
+    @listeners(document.body, 'add')
+    clicked = @clicked = @isClicked(e)
     
     if(clicked)
-      @._updateOffsets()
-      @.emit('mousedown', @._formatEvent(e))
-      # loop.push(() -> @.emit('mousedown', e))
+      @updateOffsets()
+      @emit('mousedown', @formatEvent(e))
+      # loop.push(() -> @emit('mousedown', e))
 
-  _formatEvent:(e) ->
-    x = @.x = (e.x - @._offsetX) + @.scrollLeft
-    y = @.y = (e.y - @._offsetY) + @.scrollTop
-    target = @.target = e.target
-    @.which = e.which
+
+  formatEvent:(e) ->
+    x = @x = (e.x - @offsetX) + @scrollLeft
+    y = @y = (e.y - @offsetY) + @scrollTop
+    target = @target = e.target
+    @which = e.which
     
     {x ,y, target, originalEvent:e}
 
-  _mouseMove:(e) ->
-    @.emit('mousedrag', @._formatEvent(e))
-    # loop.push(() -> @.emit('mousemove', {x ,y, target: e.target, originalEvent:e}))
 
-  _mouseUp:(e) ->
-    @._clicked = false
-    @.emit('mouseup', e)
-    # loop.push(() -> @.emit('mouseup', e))
-    @._listeners(document.body, 'remove')
+  mouseMove:(e) ->
+    @emit('mousedrag', @formatEvent(e))
+    # loop.push(() -> @emit('mousemove', {x ,y, target: e.target, originalEvent:e}))
 
-  _offsets:(styles, which) ->
+
+  mouseUp:(e) ->
+    @clicked = false
+    @emit('mouseup', e)
+    # loop.push(() -> @emit('mouseup', e))
+    @listeners(document.body, 'remove')
+
+
+  offsets:(styles, which) ->
     m = int(styles["margin-#{which}"])
     p = int(styles["padding-#{which}"])
     b = int(styles["border-#{which}-width"])
     
     {m, b, p}
 
+
   select:(selector=null) ->
     if(!selector) then return new Error('An element querySelector must be specified.')
     el = document.querySelector(selector)
     el.innerHTML = ''
-    el.addEventListener('mousedown', @._mouseDown)
+    el.addEventListener('mousedown', @mouseDown)
 
     styles = window.getComputedStyle(el)
     clientRect = el.getBoundingClientRect()
     
     # extract margin, border and padding
-    {m:mt, b:bt, p:pt} = @._offsets(styles, 'top')
-    {m:mr, b:br, p:pr} = @._offsets(styles, 'right')
-    {m:mb, b:bb, p:pb} = @._offsets(styles, 'bottom')
-    {m:ml, b:bl, p:pl} = @._offsets(styles, 'left')
+    {m:mt, b:bt, p:pt} = @offsets(styles, 'top')
+    {m:mr, b:br, p:pr} = @offsets(styles, 'right')
+    {m:mb, b:bb, p:pb} = @offsets(styles, 'bottom')
+    {m:ml, b:bl, p:pl} = @offsets(styles, 'left')
 
-    @._offsetX = clientRect.left + (ml + bl + pl)
-    @._offsetY = clientRect.top  + (mt + bt + pt)
+    @offsetX = clientRect.left + (ml + bl + pl)
+    @offsetY = clientRect.top  + (mt + bt + pt)
 
-    @.width( clientRect.width  - ( (bl + pl) + (br + pr) ))
-    @.height(clientRect.height - ( (bt + pt) + (bb + pb) ))
+    @width( clientRect.width  - ( (bl + pl) + (br + pr) ))
+    @height(clientRect.height - ( (bt + pt) + (bb + pb) ))
 
-    @._el = el
-    @._target = el
+    @el = el
+    @target = el
 
     @
 
 
-module.exports = surface
+module.exports = Surface

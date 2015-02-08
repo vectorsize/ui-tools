@@ -7,5 +7,9 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Victor Saiz",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "sizzle": "^2.1.1",
+    "slugify": "^0.1.0"
+  }
 }
