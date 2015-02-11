@@ -15,8 +15,11 @@ class Surface
   offsetX: 0
   offsetY: 0
   elements: []
+  anchor:
+    x: 0
+    y: 0
 
-  constructor: () ->
+  constructor: ->
     return new Surface() unless @ instanceof Surface
 
     chain(@)
@@ -24,72 +27,77 @@ class Surface
       .use(accessors, ['width', 'height'], true)
       .and(bind, ['mouseDown', 'mouseUp', 'mouseMove'])
 
-    @clicked = false
-    @elements = []
+    @clicked    = false
+    @elements   = []
     @scrollLeft = 0
-    @scrollTop = 0
-    # loop.start()
+    @scrollTop  = 0
 
+    # loop.start()
   
-   # returns wether the click comes from our element
+  # returns wether the click comes from our element
   isClicked: (e) ->
     if(!e) then return false
     node = e.target || e
     if(node == @el) then return true
     @isClicked(node.parentNode)
 
-
-  listeners:(target, action = 'add') ->
+  listeners: (target, action = 'add') ->
     target["#{action}EventListener"]('mouseleave', @mouseUp)
     target["#{action}EventListener"]('mouseup', @mouseUp)
     target["#{action}EventListener"]('mousemove', @mouseMove)
 
-
-  updateOffsets:() ->
+  updateOffsets: ->
     @scrollTop = window.pageYOffset - document.documentElement.clientTop
     @scrollLeft = window.pageXOffset - document.documentElement.clientLeft
 
-
-  mouseDown:(e) ->
+  mouseDown: (e) ->
     @listeners(document.body, 'add')
     clicked = @clicked = @isClicked(e)
-    
+
     if(clicked)
       @updateOffsets()
+      @anchor = 
+        x: e.x
+        y: e.y
+
       @emit('mousedown', @formatEvent(e))
       # loop.push(() -> @emit('mousedown', e))
 
+  computePositions: (e) ->
+    x: (e.x - @offsetX) + @scrollLeft
+    y: (e.y - @offsetY) + @scrollTop
 
-  formatEvent:(e) ->
-    x = @x = (e.x - @offsetX) + @scrollLeft
-    y = @y = (e.y - @offsetY) + @scrollTop
-    target = @target = e.target
-    @which = e.which
-    
-    {x ,y, target, originalEvent:e}
+  formatEvent: (e) ->
+    target  = e.target || e.relatedTarget || e.fromElement || e.toElement
+    @target = target
+    delta   = e.delta
+    {x, y}  = @computePositions(e)
+    {x ,y, target, delta, originalEvent:e}
 
+  mouseMove: (e) ->
+    e.delta = 
+      x: e.x - @anchor.x
+      y: e.y - @anchor.y
 
-  mouseMove:(e) ->
     @emit('mousedrag', @formatEvent(e))
     # loop.push(() -> @emit('mousemove', {x ,y, target: e.target, originalEvent:e}))
 
-
-  mouseUp:(e) ->
+  mouseUp: (e) ->
     @clicked = false
+    @anchor  = {x: 0, y: 0}
+
     @emit('mouseup', e)
     # loop.push(() -> @emit('mouseup', e))
     @listeners(document.body, 'remove')
 
-
-  offsets:(styles, which) ->
+  offsets: (styles, which) ->
     m = int(styles["margin-#{which}"])
     p = int(styles["padding-#{which}"])
     b = int(styles["border-#{which}-width"])
     
     {m, b, p}
 
-
-  select:(selector=null) ->
+  select: (selector=null) ->
     if(!selector) then return new Error('An element querySelector must be specified.')
     el = document.querySelector(selector)
     el.innerHTML = ''
@@ -114,6 +122,5 @@ class Surface
     @target = el
 
     @
-
 
 module.exports = Surface

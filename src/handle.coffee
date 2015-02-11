@@ -21,18 +21,31 @@ class Handle
   yscale:  null
   width:   0
   height:  0
+  clicked:  false
+  targetMode: true
   
-  constructor: () ->
+  constructor: ->
     return new Handle unless @ instanceof Handle
 
-    accessorList = ['xdomain', 'ydomain', 'xrange', 'yrange', 'top', 'right', 'bottom', 'left', 'clamps']
+    accessorList = [
+      'width'
+      'height'
+      'xdomain'
+      'ydomain'
+      'xrange'
+      'yrange'
+      'top'
+      'right'
+      'bottom'
+      'left'
+      'clamps'
+    ]
 
+    # middleware
     chain(@)
-      # middleware
       .use(emmiter)
       .use(accessors, accessorList)
-      # .and(bind, ['_mouseDown', '_mouseUp', 'update'])
-      # .targetMode(true)
+      .use(bind, ['mousedown', 'mouseup'])
     
     # margins
     @top    0
@@ -59,18 +72,15 @@ class Handle
 
     @updateScales()
 
-
-  updateScales: () ->
+  updateScales: ->
     @xscale.domain(@xdomain()).range(@xrange())
     @yscale.domain(@ydomain()).range(@yrange())
     return
-
 
   flip: (which) ->
     range = "#{which}range"
     @[range]([@[range]()[1], @[range]()[0]])
     console.log @[range]()
-
 
   # combined domain setter/getter
   domain: (xval = null, yval = null) ->
@@ -81,7 +91,6 @@ class Handle
     @updateScales()
     @
 
-
   # combined range setter/getter
   range: (xval = null, yval = null) ->
     if(xval == null) then return [@xrange(), @yrange()]
@@ -91,6 +100,13 @@ class Handle
     @updateScales()
     @
 
+  mousedown: (e) -> @clicked = @isClicked(e)
+  mouseup  : (e) -> @clicked = false
+
+  # centers given x and y based on a given object
+  center: (x, y, o) -> 
+    x: x - o.width()  * 0.5 # - @offsetx
+    y: y - o.height() * 0.5 # - @offsety
 
   clamp: (value, extent) ->
     min = extent[0]
@@ -99,22 +115,21 @@ class Handle
       return Math.min(Math.max(value, Math.min(min, max)), Math.max(min, max))
     value
 
-
   # sets value to transform translate x in data
   x: (v=null) ->
     if v == null then return @_x
-    # x = @xscale v
-    @_x = if @clamps() then @clamp(v, @xdomain()) else v
+    # clampVal = [@_xdomain[0] + @margins.left, @_xdomain[1] - @margins.right]
+    # console.log v, clampVal
+    # v -= @shape.halfWidth()
+    @_x = if @clamps() then @clamp(v, @xdomain()) - @margins.left else v
     @
-
 
   # sets value to transform translate y in data
   y: (v=null) ->
     if v == null then return @_y
-    # y = @yscale v
-    @_y = if @clamps() then @clamp(v, @ydomain()) else v
+    clampVal = @ydomain()
+    @_y = if @clamps() then @clamp(v, @ydomain()) - @margins.top else v
     @
-
 
   # selector for the container
   select: (sel) ->
@@ -123,22 +138,31 @@ class Handle
     @id  = slugify sel
     @
 
+  # applies margin conventions as explained here http://bl.ocks.org/mbostock/3019563
+  fixmargins: ->
+    @margins = 
+      top: @top()
+      left: @left()
+      right: @right()
+      bottom: @bottom()
 
-  # receives an element to be drawn
-  append: () ->
-    @margin  = {top:@top(), right:@right(), bottom:@bottom(), left:@left()}
-    @offsetx = @margin.left + @margin.right
-    @offsety = @margin.top  + @margin.bottom
-    # canvas  should have offsets added
-    # context should be offseted by left + top
-    # reference size gets updated based on the margins
-    @width   = @_xdomain[1] - @offsetx
-    @height  = @_ydomain[1] - @offsety
-    # scales are set accordingly
-    @_xdomain[0] = @margin.left
-    @_ydomain[0] = @margin.top
-    @_xdomain[1] = @width 
-    @_ydomain[1] = @height
+    @offsetx = @margins.left + @margins.right
+    @offsety = @margins.top  + @margins.bottom
+
+    # define width and height as the inner dimensions of the context area.
+    # @width   = @_xdomain[1] - @offsetx
+    # @height  = @_ydomain[1] - @offsety
+    @width   @width()  - @offsetx # - @shape.halfWidth()
+    @height  @height() - @offsety
+
+    # define svg as a G element that translates 
+    # the origin to the top-left corner of the chart area.
+    # in the subclass
+
+    # re-sset scales accordingly
+    @xdomain [@left(), @width()+@left()]
+    @ydomain [@top(), @height()+@top()]
+
     @updateScales()
 
 
@@ -149,14 +173,14 @@ class Handle
   yToData:  (v) -> @yscale v
   yToPixel: (v) -> @yscale.invert v
 
-  # shortcut to transforms
-  # transform: () ->
+  mousedown: (e) ->
+  mouseup  : (e) ->
 
   # sets rotation to transform rotate
-  rotate: () ->
+  rotate: ->
 
   # method to apply the state
   # basically tranform translate x y etc
-  update: () ->
+  # update: ->
 
 module.exports = Handle

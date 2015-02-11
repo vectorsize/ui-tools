@@ -1,0 +1,10 @@
+{
+  "version": 3,
+  "file": "shape.js",
+  "sourceRoot": "../..",
+  "sources": [
+    "lib/ui-lib/src/shape.coffee"
+  ],
+  "names": [],
+  "mappings": ";AACA,IAAA,KAAA;;AAAA;AAEe,EAAA,eAAC,QAAD,GAAA;AACX,IAAA,IAAA,CAAA,CAAwB,IAAA,YAAa,KAArC,CAAA;AAAA,aAAO,GAAA,CAAA,KAAP,CAAA;KADW;EAAA,CAAb;;eAAA;;IAFF,CAAA;;AAAA,MAMM,CAAC,OAAP,GAAiB,KANjB,CAAA"
+}
