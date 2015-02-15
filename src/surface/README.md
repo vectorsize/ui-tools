@@ -1,6 +1,6 @@
 # Surface
 
-|_API subject to chage._
+> _API subject to chage._
 
 Emits normalised events from the selected DOM element.
 
